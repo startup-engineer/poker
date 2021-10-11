@@ -16,7 +16,6 @@ const (
 )
 
 // Card
-
 var faceCardStrings = [4]string{"J", "Q", "K", "A"}
 
 type Card struct {
@@ -140,7 +139,7 @@ func (pt *PokerTable) Init(playerCount int) {
 	pt.BurnedCards = append(pt.BurnedCards, pt.Deck.Cards[0]) // Burn one
 	pt.Deck.Cards = pt.Deck.Cards[1:]
 
-	pt.CommunityCards = append(pt.CommunityCards, pt.Deck.Cards[0]) // Turn
+	pt.CommunityCards = append(pt.CommunityCards, pt.Deck.Cards[0]) // River
 	pt.Deck.Cards = pt.Deck.Cards[1:]
 }
 
