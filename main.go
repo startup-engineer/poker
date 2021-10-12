@@ -23,17 +23,22 @@ type Card struct {
 	Suit Suit
 }
 
+func CardValueToString(v int) string {
+	valueString := ""
+	if v > 1 && v < 11 {
+		valueString = fmt.Sprintf("%d", v)
+	} else {
+		valueString = faceCardStrings[v%11]
+	}
+	return valueString
+}
+
 func (c Card) String() string {
 	// TODO: Update string methods to use string buffers instead of inefficient
 	// string concatenation
 
-	valueString := ""
-	if c.Value > 1 && c.Value < 11 {
-		valueString = fmt.Sprintf("%d", c.Value)
-	} else {
-		valueString = faceCardStrings[c.Value%11]
-	}
-	return fmt.Sprintf("%s%s", valueString, c.Suit)
+	vs := CardValueToString(c.Value)
+	return fmt.Sprintf("%s%s", vs, c.Suit)
 }
 
 // Deck
@@ -100,62 +105,63 @@ func (p Player) String() string {
 }
 
 // Poker Table
-type PokerTable struct {
+type PokerGame struct {
 	Players []Player
 	CommunityCards []Card
 	BurnedCards []Card
 	Deck Deck
 }
 
-func (pt *PokerTable) Init(playerCount int) {
-	pt.Players = make([]Player, playerCount)
-	for i := range pt.Players {
-		pt.Players[i].Name = fmt.Sprintf("Player #%d", i)
+func (pg *PokerGame) Init(playerCount int) {
+	pg.Players = make([]Player, playerCount)
+	for i := range pg.Players {
+		pg.Players[i].Name = fmt.Sprintf("Player #%d", i)
 	}
 
-	pt.Deck.Init()
-	pt.Deck.Shuffle()
+	pg.Deck.Init()
+	pg.Deck.Shuffle()
 
-	for i := 0; i < 2*len(pt.Players); i++ {
-		pt.Players[i%len(pt.Players)].Cards = append(
-			pt.Players[i%len(pt.Players)].Cards,
-			pt.Deck.Cards[0],
+	// Deal cards to players
+	for i := 0; i < 2*len(pg.Players); i++ {
+		pg.Players[i%len(pg.Players)].Cards = append(
+			pg.Players[i%len(pg.Players)].Cards,
+			pg.Deck.Cards[0],
 		)
-		pt.Deck.Cards = pt.Deck.Cards[1:]
+		pg.Deck.Cards = pg.Deck.Cards[1:]
 	}
 
-	pt.BurnedCards = append(pt.BurnedCards, pt.Deck.Cards[0]) // Burn one
-	pt.Deck.Cards = pt.Deck.Cards[1:]
+	pg.BurnedCards = append(pg.BurnedCards, pg.Deck.Cards[0]) // Burn one
+	pg.Deck.Cards = pg.Deck.Cards[1:]
 
-	pt.CommunityCards = pt.Deck.Cards[:3] // Flop
-	pt.Deck.Cards = pt.Deck.Cards[3:]
+	pg.CommunityCards = pg.Deck.Cards[:3] // Flop
+	pg.Deck.Cards = pg.Deck.Cards[3:]
 
-	pt.BurnedCards = append(pt.BurnedCards, pt.Deck.Cards[0]) // Burn one
-	pt.Deck.Cards = pt.Deck.Cards[1:]
+	pg.BurnedCards = append(pg.BurnedCards, pg.Deck.Cards[0]) // Burn one
+	pg.Deck.Cards = pg.Deck.Cards[1:]
 
-	pt.CommunityCards = append(pt.CommunityCards, pt.Deck.Cards[0]) // Turn
-	pt.Deck.Cards = pt.Deck.Cards[1:]
+	pg.CommunityCards = append(pg.CommunityCards, pg.Deck.Cards[0]) // Turn
+	pg.Deck.Cards = pg.Deck.Cards[1:]
 
-	pt.BurnedCards = append(pt.BurnedCards, pt.Deck.Cards[0]) // Burn one
-	pt.Deck.Cards = pt.Deck.Cards[1:]
+	pg.BurnedCards = append(pg.BurnedCards, pg.Deck.Cards[0]) // Burn one
+	pg.Deck.Cards = pg.Deck.Cards[1:]
 
-	pt.CommunityCards = append(pt.CommunityCards, pt.Deck.Cards[0]) // River
-	pt.Deck.Cards = pt.Deck.Cards[1:]
+	pg.CommunityCards = append(pg.CommunityCards, pg.Deck.Cards[0]) // River
+	pg.Deck.Cards = pg.Deck.Cards[1:]
 }
 
-func (pt PokerTable) String() string {
+func (pg PokerGame) String() string {
 	// TODO: Update string methods to use string buffers instead of inefficient
 	// string concatenation
 
 	s := ""
-	for _, p := range pt.Players {
+	for _, p := range pg.Players {
 		s += fmt.Sprintf("%s\n", p)
 	}
 	s += "\n"
 
 	s += fmt.Sprintf("Community Cards: ")
-	for i, c := range pt.CommunityCards {
-		if i != len(pt.CommunityCards) - 1 {
+	for i, c := range pg.CommunityCards {
+		if i != len(pg.CommunityCards) - 1 {
 			s += fmt.Sprintf("%s  ", c)
 		} else {
 			s += fmt.Sprintf("%s", c)
@@ -164,8 +170,8 @@ func (pt PokerTable) String() string {
 	s += fmt.Sprintf("\n\n")
 
 	s += fmt.Sprintf("Burned Cards: ")
-	for i, c := range pt.BurnedCards {
-		if i != len(pt.BurnedCards) - 1 {
+	for i, c := range pg.BurnedCards {
+		if i != len(pg.BurnedCards) - 1 {
 			s += fmt.Sprintf("%s  ", c)
 		} else {
 			s += fmt.Sprintf("%s", c)
@@ -174,14 +180,75 @@ func (pt PokerTable) String() string {
 	s += fmt.Sprintf("\n\n")
 
 	s += fmt.Sprintf("Deck:\n")
-	s += fmt.Sprintf("%s\n", pt.Deck)
+	s += fmt.Sprintf("%s\n", pg.Deck)
 
 	return s
 }
 
-func main() {
-	pokerTable := PokerTable{}
-	pokerTable.Init(9)
+// Analyze a poker game for player and community cards
+func HasFlush(p Player, cc []Card) (string, bool) {
+	cards := make([]Card, len(p.Cards) + len(cc))
+	copy(cards, p.Cards)
+	copy(cards[len(p.Cards):], cc)
 
-	fmt.Println(pokerTable)
+	suitCount := make(map[Suit]int)
+	for _, card := range cards {
+		suitCount[card.Suit]++
+	}
+
+	for suit, count := range suitCount {
+		if count >= 5 {
+			return string(suit), true
+		}
+	}
+	return "", false
+}
+
+func HasPair(p Player, cc []Card) (string, bool) {
+	cards := make([]Card, len(p.Cards) + len(cc))
+	copy(cards, p.Cards)
+	copy(cards[len(p.Cards):], cc)
+
+	valueCount := make(map[int]int)
+	for _, card := range cards {
+		valueCount[card.Value]++
+	}
+
+	for value, count := range valueCount {
+		if count == 2 {
+			return CardValueToString(value), true
+		}
+	}
+	return "", false
+}
+
+func main() {
+	var flushHitCount int
+	var pairHitCount int
+	n := 100000
+
+	pokerGame := PokerGame{}
+	for i := 0; i < n; i++ {
+		pokerGame.Init(2)
+		// fmt.Println(pokerGame)
+
+		for _, player := range pokerGame.Players {
+			_, hasFlush := HasFlush(player, pokerGame.CommunityCards)
+			if hasFlush {
+				flushHitCount++
+				break
+			}
+		}
+
+		for _, player := range pokerGame.Players {
+			_, hasPair := HasPair(player, pokerGame.CommunityCards)
+			if hasPair {
+				pairHitCount++
+				break
+			}
+		}
+	}
+
+	fmt.Println(float64(flushHitCount) / float64(n))
+	fmt.Println(float64(pairHitCount) / float64(n))
 }
